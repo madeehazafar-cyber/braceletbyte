@@ -69,7 +69,7 @@ const CUSTOMIZE = {
     { id: 'leather', label: 'Leather Wrap', class: 'leather' }
   ],
   colors: [
-    { id: 'gold', hex: '#C9A84C', label: 'Gold' },
+    { id: 'gold', hex: '#F5D061', label: 'Gold' },
     { id: 'rose', hex: '#FFB5C2', label: 'Rose' },
     { id: 'lavender', hex: '#D4BBFF', label: 'Lavender' },
     { id: 'mint', hex: '#B8F0D8', label: 'Mint' },
@@ -249,245 +249,148 @@ function updateZoom() {
   if (level) level.textContent = Math.round(zoomScale * 100) + '%';
 }
 
-function initProductModal() {
-  document.getElementById('zoomIn')?.addEventListener('click', () => { zoomScale = Math.min(3, zoomScale + 0.25); updateZoom(); });
-  document.getElementById('zoomOut')?.addEventListener('click', () => { zoomScale = Math.max(0.5, zoomScale - 0.25); updateZoom(); });
-  document.getElementById('zoomReset')?.addEventListener('click', () => { zoomScale = 1; updateZoom(); });
-
-  const vp = document.getElementById('zoomViewport');
-  vp?.addEventListener('wheel', e => {
-    e.preventDefault();
-    zoomScale = Math.max(0.5, Math.min(3, zoomScale + (e.deltaY > 0 ? -0.1 : 0.1)));
-    updateZoom();
-  }, { passive: false });
-
-  document.getElementById('productModalAdd')?.addEventListener('click', () => {
-    if (!currentModalProduct) return;
-    const p = currentModalProduct;
-    addToCart({ id: p.id, name: p.name, price: p.price, emoji: p.emoji, bg: p.bg, meta: p.material });
-    closeModal('productModal');
-  });
-
-  document.getElementById('productModalWish')?.addEventListener('click', function () {
-    if (!currentModalProduct) return;
-    const id = currentModalProduct.id;
-    let list = getWishlist();
-    const has = list.includes(id);
-    list = has ? list.filter(x => x !== id) : [...list, id];
-    saveWishlist(list);
-    this.textContent = has ? '♡ Wishlist' : '♥ Wishlisted';
-    this.setAttribute('aria-pressed', String(!has));
-    document.querySelectorAll(`[data-wish-id="${id}"]`).forEach(btn => {
-      btn.textContent = has ? '♡' : '♥';
-      btn.classList.toggle('wished', !has);
-    });
-  });
-}
-
-function renderCategoryBar(container) {
-  if (!container) return;
-  container.innerHTML = CATEGORIES.map((c, i) =>
-    `<button class="cat-chip${i === 0 ? ' active' : ''}" data-cat="${c.id}" aria-pressed="${i === 0}"><span class="cat-emoji" aria-hidden="true">${c.emoji}</span> ${c.label}</button>`
-  ).join('');
-  container.querySelectorAll('.cat-chip').forEach(chip => {
-    chip.addEventListener('click', () => filterProducts(chip.dataset.cat, chip));
-  });
-}
-
-function initProductsPage() {
-  const grid = document.getElementById('productGrid');
-  const catBar = document.querySelector('.categories-scroll');
-  renderCategoryBar(catBar);
-  if (grid) {
-    grid.innerHTML = PRODUCTS.map(renderProductCard).join('');
-    bindProductGrid(grid);
+function initPage() {
+  setActiveNav(document.body.dataset.page || 'home');
+  updateCartBadge();
+  if (document.body.dataset.page === 'home') {
+    const grid = document.getElementById('featuredGrid');
+    if (grid) {
+      grid.innerHTML = PRODUCTS.slice(0, 4).map(renderProductCard).join('');
+      bindProductGrid(grid);
+    }
   }
-  document.getElementById('searchInput')?.addEventListener('input', e => handleSearch(e.target.value));
-}
-
-function filterProducts(cat, btn) {
-  document.querySelectorAll('.cat-chip').forEach(c => {
-    const active = c === btn;
-    c.classList.toggle('active', active);
-    c.setAttribute('aria-pressed', String(active));
-  });
-  document.querySelectorAll('.product-card').forEach(card => {
-    card.style.display = (cat === 'all' || card.dataset.cat === cat) ? '' : 'none';
-  });
-  if (cat !== 'all') { showToast(`Showing ${cat} ✨`); announce(`Filtered to ${cat} category`); }
-}
-
-function handleSearch(val) {
-  const q = val.toLowerCase().trim();
-  document.querySelectorAll('.product-card').forEach(card => {
-    const name = card.dataset.name || '';
-    const mat = card.querySelector('.product-material')?.textContent.toLowerCase() || '';
-    card.style.display = (!q || name.includes(q) || mat.includes(q)) ? '' : 'none';
-  });
-}
-
-function initHomeFeatured() {
-  const grid = document.getElementById('featuredGrid');
-  if (grid) {
-    grid.innerHTML = PRODUCTS.slice(0, 4).map(renderProductCard).join('');
-    bindProductGrid(grid);
+  if (document.body.dataset.page === 'products') {
+    const productGrid = document.getElementById('productGrid');
+    const categoriesScroll = document.querySelector('.categories-scroll');
+    if (productGrid && categoriesScroll) {
+      productGrid.innerHTML = PRODUCTS.map(renderProductCard).join('');
+      categoriesScroll.innerHTML = CATEGORIES.map(cat => `
+        <button class="cat-chip" data-cat="${cat.id}" type="button" aria-label="Filter by ${cat.label}"><span>${cat.emoji}</span> ${cat.label}</button>
+      `).join('');
+      bindProductGrid(productGrid);
+      categoriesScroll.addEventListener('click', e => {
+        const btn = e.target.closest('.cat-chip');
+        if (!btn) return;
+        const cat = btn.dataset.cat;
+        document.querySelectorAll('.cat-chip').forEach(c => c.classList.toggle('active', c === btn));
+        filterProducts(cat);
+      });
+      document.getElementById('searchInput')?.addEventListener('input', e => filterSearch(e.target.value));
+    }
+  }
+  if (document.body.dataset.page === 'customize') {
+    initCustomize();
+  }
+  if (document.body.dataset.page === 'cart') {
+    renderCart();
   }
 }
 
-function initCustomizePage() {
-  const state = { style: 'beaded', color: '#F5D061', pattern: 'solid', letters: '' };
+function filterProducts(cat) {
+  document.querySelectorAll('.product-card').forEach(card => {
+    const show = cat === 'all' || card.dataset.cat === cat;
+    card.style.display = show ? '' : 'none';
+  });
+}
+
+function filterSearch(query) {
+  const q = query.toLowerCase().trim();
+  document.querySelectorAll('.product-card').forEach(card => {
+    const name = card.dataset.name;
+    const cat = card.dataset.cat;
+    card.style.display = !q || name.includes(q) || cat.includes(q) ? '' : 'none';
+  });
+}
+
+function initCustomize() {
   const previewRing = document.getElementById('previewRing');
-  if (!previewRing) return;
+  const previewPattern = document.getElementById('previewPattern');
+  const previewEngraving = document.getElementById('previewEngraving');
+  const styleGroup = document.getElementById('styleOptions');
+  const colorGroup = document.getElementById('colorOptions');
+  const patternGroup = document.getElementById('patternOptions');
+  const engravingInput = document.getElementById('engravingInput');
+  const priceEl = document.getElementById('customPrice');
+  const addBtn = document.getElementById('addCustomBtn');
+
+  const state = { style: 'beaded', color: '#F5D061', pattern: 'solid', engraving: '' };
 
   function updatePreview() {
-    const styleObj = CUSTOMIZE.styles.find(s => s.id === state.style);
-    previewRing.className = 'preview-ring' + (styleObj?.class ? ' ' + styleObj.class : '');
     previewRing.style.borderColor = state.color;
-
-    const patternObj = CUSTOMIZE.patterns.find(p => p.id === state.pattern);
-    const pp = document.getElementById('previewPattern');
-    pp.style.background = patternObj?.css || 'transparent';
-    pp.style.backgroundSize = (state.pattern === 'dots' || state.pattern === 'hearts') ? '14px 14px' : '';
-
-    const eng = document.getElementById('previewEngraving');
-    eng.textContent = state.letters;
-    eng.style.display = state.letters ? 'block' : 'none';
-
-    const beads = document.getElementById('previewBeads');
-    beads.innerHTML = '';
-    if (state.style === 'beaded') {
-      for (let i = 0; i < 8; i++) {
-        const bead = document.createElement('div');
-        bead.className = 'preview-bead';
-        bead.style.background = state.color;
-        const angle = (i / 8) * 360, rad = angle * Math.PI / 180, r = 115;
-        bead.style.left = `${130 + Math.sin(rad) * r - 7}px`;
-        bead.style.top = `${130 - Math.cos(rad) * r - 7}px`;
-        beads.appendChild(bead);
-      }
-    }
-    document.getElementById('customPrice').textContent = `$${CUSTOMIZE.basePrice + state.letters.length * 3}`;
+    previewPattern.style.background = CUSTOMIZE.patterns.find(p => p.id === state.pattern).css;
+    previewPattern.style.opacity = state.pattern === 'solid' ? '0.2' : '0.7';
+    previewPattern.style.backgroundColor = state.color;
+    previewEngraving.textContent = state.engraving.toUpperCase();
+    previewEngraving.style.color = state.color;
+    priceEl.textContent = `$${CUSTOMIZE.basePrice + (state.engraving.length * 3)}`;
   }
 
-  ['styleOptions', 'patternOptions'].forEach(id => {
-    document.getElementById(id)?.addEventListener('click', e => {
-      const btn = e.target.closest('.option-btn');
-      if (!btn) return;
-      const key = id === 'styleOptions' ? 'style' : 'pattern';
-      state[key] = btn.dataset.value;
-      document.querySelectorAll(`#${id} .option-btn`).forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      updatePreview();
-    });
-  });
-
-  document.getElementById('colorOptions')?.addEventListener('click', e => {
-    const sw = e.target.closest('.color-swatch');
-    if (!sw) return;
-    state.color = sw.dataset.color;
-    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
-    sw.classList.add('selected');
+  styleGroup?.addEventListener('click', e => {
+    const button = e.target.closest('[data-value]');
+    if (!button) return;
+    state.style = button.dataset.value;
+    [...styleGroup.children].forEach(btn => btn.classList.toggle('selected', btn === button));
     updatePreview();
   });
 
-  document.getElementById('engravingInput')?.addEventListener('input', e => {
-    state.letters = e.target.value.slice(0, 12).toUpperCase();
-    e.target.value = state.letters;
+  colorGroup?.addEventListener('click', e => {
+    const button = e.target.closest('[data-color]');
+    if (!button) return;
+    state.color = button.dataset.color;
+    [...colorGroup.children].forEach(btn => btn.classList.toggle('selected', btn === button));
     updatePreview();
   });
 
-  document.getElementById('addCustomBtn')?.addEventListener('click', () => {
-    const sl = CUSTOMIZE.styles.find(s => s.id === state.style)?.label;
-    const cl = CUSTOMIZE.colors.find(c => c.hex === state.color)?.label || 'Custom';
-    const pl = CUSTOMIZE.patterns.find(p => p.id === state.pattern)?.label;
-    const price = CUSTOMIZE.basePrice + state.letters.length * 3;
-    addToCart({
-      id: 'custom-' + Date.now(), name: 'Custom Bracelet', price, emoji: '✨',
-      bg: `linear-gradient(135deg, ${state.color}44, ${state.color}88)`,
-      meta: `${sl} · ${cl} · ${pl}${state.letters ? ' · "' + state.letters + '"' : ''}`, custom: true
-    });
+  patternGroup?.addEventListener('click', e => {
+    const button = e.target.closest('[data-value]');
+    if (!button) return;
+    state.pattern = button.dataset.value;
+    [...patternGroup.children].forEach(btn => btn.classList.toggle('selected', btn === button));
+    updatePreview();
+  });
+
+  engravingInput?.addEventListener('input', e => {
+    state.engraving = e.target.value.slice(0, 12);
+    updatePreview();
+  });
+
+  addBtn?.addEventListener('click', () => {
+    addToCart({ id: `custom-${Date.now()}`, name: `Custom Bracelet`, price: CUSTOMIZE.basePrice + (state.engraving.length * 3), custom: true });
+    showToast('Custom bracelet added to cart!');
   });
 
   updatePreview();
 }
 
-function renderCartPage() {
-  const container = document.getElementById('cartContent');
-  if (!container) return;
+function renderCart() {
+  const cartContent = document.getElementById('cartContent');
+  if (!cartContent) return;
+  const cart = getCart();
+  if (!cart.length) {
+    cartContent.innerHTML = '<div class="cart-empty"><h2>Your cart is empty</h2><p>Add something sparkly to get started.</p></div>';
+    return;
+  }
 
-  function render() {
-    const cart = getCart();
-    if (!cart.length) {
-      container.innerHTML = `<div class="cart-empty"><div class="cart-empty-icon" aria-hidden="true">🛍️</div><h2>Your cart is empty</h2><p>Add bracelets from our shop or create your own!</p><a href="products.html" class="btn-primary">Browse Products</a> <a href="customize.html" class="btn-secondary" style="margin-left:12px">Customize</a></div>`;
-      return;
-    }
-    const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-    const shipping = subtotal >= 75 ? 0 : 5.99;
-    container.innerHTML = `
-      <div class="cart-items">${cart.map(item => `
-        <div class="cart-item">
-          <div class="cart-item-img" style="background:${item.bg || 'var(--surface-alt)'}" aria-hidden="true">${item.emoji || '📿'}</div>
-          <div class="cart-item-details">
-            <div class="cart-item-name">${item.name}${item.qty > 1 ? ' × ' + item.qty : ''}</div>
-            <div class="cart-item-meta">${item.meta || ''}</div>
-          </div>
-          <div class="cart-item-price">$${(item.price * item.qty).toFixed(2)}</div>
-          <button class="remove-btn" data-remove="${item.id}" aria-label="Remove ${item.name} from cart">✕</button>
-        </div>`).join('')}
+  const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  cartContent.innerHTML = `
+    ${cart.map(item => `
+      <div class="cart-item">
+        <div class="cart-item-meta">
+          <div class="cart-item-title">${item.name}</div>
+          <div class="cart-item-price">${item.qty} x $${item.price}</div>
+          <div class="cart-item-desc">${item.meta || ''}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-end;">
+          <button type="button" class="btn-secondary" onclick="removeFromCart('${item.id}')">Remove</button>
+          <span class="cart-item-price">$${item.price * item.qty}</span>
+        </div>
       </div>
-      <div class="cart-summary">
-        <div class="summary-row"><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>
-        <div class="summary-row"><span>Shipping</span><span>${shipping === 0 ? 'Free ✨' : '$' + shipping.toFixed(2)}</span></div>
-        <div class="summary-row total"><span>Total</span><span>$${(subtotal + shipping).toFixed(2)}</span></div>
-        <p class="checkout-note" role="note">🔒 No card details ever — we only ask for your name</p>
-        <button class="checkout-btn" id="checkoutBtn">Proceed to Checkout 💌</button>
-      </div>`;
-
-    container.querySelectorAll('[data-remove]').forEach(btn => {
-      btn.addEventListener('click', () => { removeFromCart(btn.dataset.remove); showToast('Item removed'); render(); });
-    });
-    document.getElementById('checkoutBtn')?.addEventListener('click', startCheckout);
-  }
-  render();
+    `).join('')}
+    <div class="cart-summary">
+      <span><strong>Total</strong></span>
+      <span><strong>$${total}</strong></span>
+    </div>
+  `;
 }
 
-function initCartPage() { renderCartPage(); }
-
-function startCheckout() {
-  const user = getUser?.();
-  const nameInput = document.getElementById('checkoutName');
-  if (nameInput && user?.name) nameInput.value = user.name;
-  openModal('checkoutModal');
-  if (!document.getElementById('checkoutForm')?.dataset.bound) {
-    document.getElementById('checkoutForm').dataset.bound = '1';
-    document.getElementById('checkoutForm').addEventListener('submit', e => {
-      e.preventDefault();
-      const name = document.getElementById('checkoutName').value.trim();
-      if (!name) return;
-      saveUser?.({ name, email: getUser?.()?.email || '' });
-      saveCart([]);
-      closeModal('checkoutModal');
-      showToast(`Thank you, ${name}! Order placed 🎉`);
-      showVisualAlert?.(`Order confirmed for ${name}! No payment needed.`);
-      announce(`Order placed successfully for ${name}`);
-      if (document.body.dataset.page === 'cart') renderCartPage();
-      updateAccountButton?.();
-    });
-  }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  updateCartBadge();
-  initProductModal();
-
-  const page = document.body.dataset.page;
-  if (page) setActiveNav(page);
-  if (page === 'home') initHomeFeatured();
-  if (page === 'products') initProductsPage();
-  if (page === 'customize') initCustomizePage();
-  if (page === 'cart') initCartPage();
-
-  document.querySelectorAll('a[href^="#"]').forEach(a => {
-    a.addEventListener('click', e => { e.preventDefault(); });
-  });
-});
+window.addEventListener('DOMContentLoaded', initPage);
