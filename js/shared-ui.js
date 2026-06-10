@@ -1,3 +1,5 @@
+/* Shared overlays, splash, modals, chat, accessibility — all pages */
+
 function injectSharedUI() {
   if (document.getElementById('bb-overlays')) return;
 
