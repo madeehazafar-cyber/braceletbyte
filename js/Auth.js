@@ -55,9 +55,11 @@ function showAuthModal() {
   if (existing) existing.remove();
   
   const modalHtml = `
-    <div id="authModal" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:20000;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;">
-      <div style="background:white;border-radius:24px;padding:32px;max-width:400px;width:90%;text-align:center;border:2px solid #FFB5C2;">
-        <div style="font-size:56px;">✨</div>
+    <div id="authModal" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:20000;background:rgba(45,31,61,0.58);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;">
+      <div style="background:linear-gradient(180deg,#FFF8FC 0%,#FFF0F8 100%);border-radius:24px;padding:32px;max-width:400px;width:90%;text-align:center;border:2px solid #FFB5C2;box-shadow:0 24px 70px rgba(232,120,160,.32);position:relative;overflow:hidden;">
+        <div style="position:absolute;inset:-40px auto auto -30px;width:120px;height:120px;border-radius:50%;background:rgba(245,208,97,.22);pointer-events:none;"></div>
+        <div style="position:absolute;right:-32px;bottom:-38px;width:140px;height:140px;border-radius:50%;background:rgba(212,187,255,.32);pointer-events:none;"></div>
+        <div style="position:relative;font-size:56px;text-shadow:0 8px 22px rgba(245,208,97,.45);">✨</div>
         <h2 style="margin:10px 0;color:#3D2B4A;">Welcome to BraceletByte!</h2>
         <p style="color:#666;margin-bottom:24px;">Sign in to save your cart across devices</p>
         
@@ -66,9 +68,9 @@ function showAuthModal() {
           Sign in with Google
         </button>
         
-        <div style="margin:16px 0;position:relative;text-align:center;"><span style="background:white;padding:0 12px;color:#999;">or</span><hr style="position:absolute;top:50%;width:100%;z-index:-1;border:none;border-top:1px solid #e0e0e0;"></div>
+        <div style="margin:16px 0;position:relative;text-align:center;"><span style="background:#FFF4FA;padding:0 12px;color:#8B7A9E;">or</span><hr style="position:absolute;top:50%;width:100%;z-index:-1;border:none;border-top:1px solid #FFE0EE;"></div>
         
-        <button id="guestModeBtn" style="width:100%;padding:12px;background:#e0e0e0;color:#333;border:none;border-radius:999px;cursor:pointer;font-size:16px;">
+        <button id="guestModeBtn" style="width:100%;padding:12px;background:linear-gradient(135deg,#FFB5C2,#D4BBFF);color:#3D2B4A;border:none;border-radius:999px;cursor:pointer;font-size:16px;box-shadow:0 8px 22px rgba(212,187,255,.32);">
           🎮 Continue as Guest
         </button>
         
